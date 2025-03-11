@@ -1,95 +1,114 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { Box, Button, Fade, SimpleGrid, VStack } from "@chakra-ui/react";
+import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [grid, setGrid] = useState<number>(0);
+  const [cellSize, setCellSize] = useState<number>(0);
+  const [paintedCells, setPaintedCells] = useState(new Map<number, string>());
+  const [selectedColor, setSelectedColor] = useState("blue.500");
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [pickerPosition, setPickerPosition] = useState({ x: 0, y: 0 });
+  const isPainting = useRef(false);
+  const colors = [
+    "red.500",
+    "blue.500",
+    "green.500",
+    "yellow.500",
+    "purple.500",
+  ];
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  useEffect(() => {
+    const updateGrid = () => {
+      if (typeof window === "undefined") return;
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const cellSize = Math.floor(width / 100);
+      const rows = Math.floor(height / cellSize);
+      setGrid(rows * 100);
+      setCellSize(cellSize);
+    };
+
+    updateGrid();
+    window.addEventListener("resize", updateGrid);
+    return () => window.removeEventListener("resize", updateGrid);
+  }, []);
+
+  const handleClick = (index: number) => {
+    setPaintedCells((prev) => {
+      const newMap = new Map(prev);
+      if (newMap.has(index)) {
+        newMap.delete(index);
+      } else {
+        newMap.set(index, selectedColor);
+      }
+      return newMap;
+    });
+  };
+
+  const handleRightClick = (event: React.MouseEvent, index: number) => {
+    event.preventDefault();
+    setPickerPosition({ x: event.clientX, y: event.clientY });
+    setShowColorPicker(true);
+  };
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+    setShowColorPicker(false);
+  };
+
+  return (
+    <Box
+      width="100vw"
+      h="100vh"
+      userSelect="none"
+      onMouseDown={() => (isPainting.current = true)}
+      onMouseUp={() => (isPainting.current = false)}
+      onMouseLeave={() => (isPainting.current = false)}
+    >
+      {grid !== null && cellSize !== null && (
+        <SimpleGrid columns={100}>
+          {Array.from({ length: grid }).map((_, index) => (
+            <Box
+              key={index}
+              width={`${cellSize}px`}
+              h={`${cellSize}px`}
+              bg={paintedCells.get(index) || "gray.100"}
+              border="1px solid #ccc"
+              onClick={() => handleClick(index)}
+              onContextMenu={(e) => handleRightClick(e, index)}
+              onMouseEnter={() => isPainting.current && handleClick(index)}
             />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
+          ))}
+        </SimpleGrid>
+      )}
+
+      {showColorPicker && (
+        <Fade in={showColorPicker}>
+          <VStack
+            position="absolute"
+            left={`${pickerPosition.x}px`}
+            top={`${pickerPosition.y}`}
+            bg="white"
+            p={3}
+            boxShadow="lg"
+            onMouseLeave={() => {
+              setShowColorPicker(false);
+            }}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            {colors.map((color) => (
+              <Button
+                key={color}
+                bg={color}
+                width={"40px"}
+                height={"40px"}
+                onClick={() => handleColorSelect(color)}
+              />
+            ))}
+          </VStack>
+        </Fade>
+      )}
+    </Box>
   );
 }
